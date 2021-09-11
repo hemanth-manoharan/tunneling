@@ -44,8 +44,8 @@ logging.basicConfig(level=logging.INFO)
 
 # Start the http server thread
 
-httpServerPort = 9000
-httpd = HTTPServer(('', httpServerPort), HttpReqHandler)
+http_server_port = 9000
+httpd = HTTPServer(('', http_server_port), HttpReqHandler)
 
 def http_serve_forever(httpd):
   with httpd:  # to make sure httpd.server_close is called
@@ -55,15 +55,14 @@ def http_serve_forever(httpd):
 thread = Thread(target=http_serve_forever, args=(httpd, ))
 thread.start()
 
-# Start the WebSocket server thread
-# Reference: https://websockets.readthedocs.io/en/3.0/intro.html
-
-connectedWS = None
+# Start the WebSocket server
+# Reference: https://websockets.readthedocs.io/en/stable/intro/index.html
+connected_ws = None
 
 async def client_regn_handler(websocket, path):
-  global connectedWS
+  global connected_ws
 
-  connectedWS = websocket
+  connected_ws = websocket
 
   while True:
     try:
@@ -77,10 +76,11 @@ async def client_regn_handler(websocket, path):
       print(f"Terminated")
       break
 
+wss_port = 9001
 
-wssPort = 9001
-wssd = websockets.serve(client_regn_handler, 'localhost', wssPort)
+async def wss_main():
+    async with websockets.serve(client_regn_handler, "localhost", wss_port):
+        await asyncio.Future()  # run forever
 
 logging.info('Starting wss server...\n')
-asyncio.get_event_loop().run_until_complete(wssd)
-asyncio.get_event_loop().run_forever()
+asyncio.run(wss_main())
