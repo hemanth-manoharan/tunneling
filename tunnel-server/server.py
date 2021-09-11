@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Thanks to
 # https://gist.github.com/mdonkers/63e115cc0c79b4f6b8b3a6b797e485c7
 # https://gist.github.com/kwk/5387c0e8d629d09f93665169879ccb86
@@ -60,19 +58,25 @@ thread.start()
 # Start the WebSocket server thread
 # Reference: https://websockets.readthedocs.io/en/3.0/intro.html
 
-# connected = set()
+connectedWS = None
 
 async def client_regn_handler(websocket, path):
-  # global connected
-  # # Register
-  # connected.add(websocket)
+  global connectedWS
 
-  name = await websocket.recv()
-  print("< {}".format(name))
+  connectedWS = websocket
 
-  greeting = "Hello {}!".format(name)
-  await websocket.send(greeting)
-  print("> {}".format(greeting))
+  while True:
+    try:
+      name = await websocket.recv()
+      print("< {}".format(name))
+
+      greeting = "Hello {}!".format(name)
+      await websocket.send(greeting)
+      print("> {}".format(greeting))
+    except websockets.ConnectionClosed:
+      print(f"Terminated")
+      break
+
 
 wssPort = 9001
 wssd = websockets.serve(client_regn_handler, 'localhost', wssPort)

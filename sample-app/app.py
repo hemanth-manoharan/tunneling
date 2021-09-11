@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Thanks to
 # https://gist.github.com/mdonkers/63e115cc0c79b4f6b8b3a6b797e485c7
 # https://gist.github.com/kwk/5387c0e8d629d09f93665169879ccb86
