@@ -17,12 +17,25 @@ class HttpReqHandler(BaseHTTPRequestHandler):
     self.send_header('Content-type', 'text/html')
     self.end_headers()
 
+  async def handle_get(self):
+    if connected_ws != None:
+      await connected_ws.send("GET Request")
+      print("> {}".format("GET Request"))
+      # TODO Listen for response msg on local MQ
+      # # Wait for message to come in
+      # msg = await asyncio.wait_for(future, 1)
+    return 1
+
   def do_GET(self):
     logging.info("GET request,\nPath: %s\nHeaders:\n%s\n", str(self.path), str(self.headers))
 
     # TODO Send the message over the listening websocket here
     # Synchronously wait for the response (simple design) and
     # return the response back.
+    # Ref: https://geekyhumans.com/create-asynchronous-api-in-python-and-flask/
+    asyncio.set_event_loop(asyncio.new_event_loop())
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(self.handle_get())
 
     self._set_response()
     self.wfile.write("GET request for {}".format(self.path).encode('utf-8'))
@@ -66,15 +79,27 @@ async def client_regn_handler(websocket, path):
 
   while True:
     try:
-      name = await websocket.recv()
-      print("< {}".format(name))
-
-      greeting = "Hello {}!".format(name)
-      await websocket.send(greeting)
-      print("> {}".format(greeting))
+      msg = await websocket.recv()
+      logging.info("< {}".format(msg))
+      # TODO Post to local MQ
+      # https://docs.nats.io/developing-with-nats/sending
+      # await nc.publish("messages", bytes(msg, 'utf-8'))
     except websockets.ConnectionClosed:
       print(f"Terminated")
+      connected_ws = None
       break
+
+# TODO
+# nc = NATS()
+# await nc.connect(servers=["nats://demo.nats.io:4222"])
+# https://docs.nats.io/developing-with-nats/receiving/async
+# future = asyncio.Future()
+
+# async def cb(msg):
+#   nonlocal future
+#   future.set_result(msg)
+
+# await nc.subscribe("messages", cb=cb)
 
 wss_port = 9001
 

@@ -5,12 +5,12 @@ async def hello():
   async with websockets.connect('ws://localhost:9001') as websocket:
     while True:
       try:
-        name = input("What's your name? ")
-        await websocket.send(name)
-        print("> {}".format(name))
+        msg = await websocket.recv()
+        print("> {}".format(msg))
 
-        greeting = await websocket.recv()
-        print("< {}".format(greeting))
+        return_msg = "< {} Response".format(msg)
+        await websocket.send(return_msg)
+        print(return_msg)
       except websockets.ConnectionClosed:
         print(f"Terminated")
         break
