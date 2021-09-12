@@ -8,9 +8,10 @@ async def hello():
         msg = await websocket.recv()
         print("> {}".format(msg))
 
-        return_msg = "< {} Response".format(msg)
+        return_msg = msg + " Response"
+
         await websocket.send(return_msg)
-        print(return_msg)
+        print("< {}".format(return_msg))
       except websockets.ConnectionClosed:
         print(f"Terminated")
         break
