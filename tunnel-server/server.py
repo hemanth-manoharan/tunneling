@@ -117,7 +117,6 @@ async def client_regn_handler(websocket, path):
       if msg in event_dict:
         logging.debug("Found event dict entry")
         resp_dict[msg] = msg
-        # TODO Not working!!!
         event_dict[msg].set()
         logging.debug("Deleting event entry from dict")
         del event_dict[msg]
