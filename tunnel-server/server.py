@@ -8,6 +8,8 @@ import logging
 
 import asyncio
 import websockets
+import time
+import json
 
 from threading import Thread
 
@@ -24,26 +26,43 @@ class Event_ts(asyncio.Event):
     #FIXME: The _loop attribute is not documented as public api!
     self._loop.call_soon_threadsafe(super().set)
 
+# JSON payload structure over the WebSocket
+# Request/Response message format
+# {
+#   "id": "<unique request id>",
+#   "uri": "<uri of request>",
+#   "method": "<HTTP METHOD>",
+#   "headers": {
+#   },
+#   "body": "<body encoded as base64 string>"
+# }
 class HttpReqHandler(BaseHTTPRequestHandler):
   def _set_response(self):
     self.send_response(200)
     self.send_header('Content-type', 'text/html')
     self.end_headers()
 
-  async def handle_get(self, path):
+  def gen_unique_id(self):
+    return time.time()
+
+  async def handle_get(self, path, headers):
     global event_dict
     global resp_dict
 
     if connected_ws != None:
       event = Event_ts()
-      
-      # Put this event in the in-memory hashmap
-      # TODO Just using payload as unique request id
-      msg = "GET {}".format(path)
-      event_dict[msg + " Response"] = event
+       
+      msg_id = self.gen_unique_id()
+      # TODO send headers as well
+      msg = {
+        "id": msg_id,
+        "uri": path,
+        "method": "GET"
+      }
+      event_dict[msg_id] = event
  
-      await connected_ws.send(msg)
-      logging.debug("> {}".format(msg))
+      await connected_ws.send(json.dumps(msg))
+      logging.debug("> {}".format(json.dumps(msg)))
 
       # Wait on this event to be triggered
       # TODO Put in timeouts for resilience
@@ -52,9 +71,9 @@ class HttpReqHandler(BaseHTTPRequestHandler):
       logging.debug("Finished waiting on event")
 
       # Retrieve response and return
-      # TODO Change to proper unique request id
-      return resp_dict[msg + " Response"]
-      del resp_dict[msg + " Response"]
+      response = resp_dict[msg_id]
+      del resp_dict[msg_id]
+      return response
 
     return None
 
@@ -66,10 +85,10 @@ class HttpReqHandler(BaseHTTPRequestHandler):
 
     asyncio.set_event_loop(asyncio.new_event_loop())
     loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(self.handle_get(str(self.path)))
+    result = loop.run_until_complete(self.handle_get(str(self.path), self.headers))
 
     self._set_response()
-    self.wfile.write("Response: {}".format(result).encode('utf-8'))
+    self.wfile.write(str(result["body"]).encode('utf-8'))
 
   def do_POST(self):
     content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
@@ -112,14 +131,17 @@ async def client_regn_handler(websocket, path):
       msg = await websocket.recv()
       logging.debug("< {}".format(msg))
 
-      # TODO Fetch by unique request id
+      msg_json = json.loads(msg)
+      msg_id = msg_json["id"]
+
+      # Fetch by unique request id
       # Put response in dict and raise event
-      if msg in event_dict:
+      if msg_id in event_dict:
         logging.debug("Found event dict entry")
-        resp_dict[msg] = msg
-        event_dict[msg].set()
+        resp_dict[msg_id] = msg_json
+        event_dict[msg_id].set()
         logging.debug("Deleting event entry from dict")
-        del event_dict[msg]
+        del event_dict[msg_id]
 
     except websockets.ConnectionClosed:
       logging.info(f"WebSocket connection terminated")
