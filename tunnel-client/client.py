@@ -6,7 +6,7 @@ import base64
 
 local_svc = "http://localhost:9002"
 
-bin_types = ["image/jpeg"]
+bin_types = ["image/jpeg", "image/x-icon"]
 def is_text(headers):
   if headers.get("content-type") in bin_types:
     return False

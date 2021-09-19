@@ -14,7 +14,7 @@ import base64
 
 from threading import Thread
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 bin_types = ["image/jpeg"]
 def is_text(headers):
@@ -80,9 +80,9 @@ class HttpReqHandler(BaseHTTPRequestHandler):
 
       # Wait on this event to be triggered
       # TODO Put in timeouts for resilience
-      logging.debug("Starting to wait on event")
+      logging.info("Starting to wait on event with id: {}".format(msg_id))
       await event.wait()
-      logging.debug("Finished waiting on event")
+      logging.info("Finished waiting on event with id: {}".format(msg_id))
 
       # Retrieve response and return
       response = resp_dict[msg_id]
@@ -158,10 +158,10 @@ async def client_regn_handler(websocket, path):
       # Fetch by unique request id
       # Put response in dict and raise event
       if msg_id in event_dict:
-        logging.debug("Found event dict entry")
+        logging.info("Found event dict entry with id: {}".format(msg_id))
         resp_dict[msg_id] = msg_json
         event_dict[msg_id].set()
-        logging.debug("Deleting event entry from dict")
+        logging.info("Deleting event entry from dict with id: {}".format(msg_id))
         del event_dict[msg_id]
 
     except websockets.ConnectionClosed:
