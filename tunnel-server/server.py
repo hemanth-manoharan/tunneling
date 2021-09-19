@@ -10,10 +10,18 @@ import asyncio
 import websockets
 import time
 import json
+import base64
 
 from threading import Thread
 
 logging.basicConfig(level=logging.DEBUG)
+
+bin_types = ["image/jpeg"]
+def is_text(headers):
+  if headers.get("content-type") in bin_types:
+    return False
+  else:
+    return True
 
 event_dict = {}
 resp_dict = {}
@@ -37,9 +45,15 @@ class Event_ts(asyncio.Event):
 #   "body": "<body encoded as base64 string>"
 # }
 class HttpReqHandler(BaseHTTPRequestHandler):
-  def _set_response(self):
+  def _set_text_response(self):
     self.send_response(200)
     self.send_header('Content-type', 'text/html')
+    self.end_headers()
+
+  def _set_bin_response(self, headers):
+    self.send_response(200)
+    self.send_header('content-type', headers["content-type"])
+    self.send_header('content-length', headers["content-length"])
     self.end_headers()
 
   def gen_unique_id(self):
@@ -87,8 +101,15 @@ class HttpReqHandler(BaseHTTPRequestHandler):
     loop = asyncio.get_event_loop()
     result = loop.run_until_complete(self.handle_get(str(self.path), self.headers))
 
-    self._set_response()
-    self.wfile.write(str(result["body"]).encode('utf-8'))
+    logging.debug("Resp Headers from client:" + str(result["headers"]))
+
+    is_text_resp = is_text(result["headers"])
+    if is_text_resp:
+      self._set_text_response()
+      self.wfile.write(result["body"].encode('utf-8'))
+    else:
+      self._set_bin_response(result["headers"])
+      self.wfile.write(base64.b64decode(result["body"]))
 
   def do_POST(self):
     content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
