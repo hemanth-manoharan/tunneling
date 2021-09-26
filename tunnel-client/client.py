@@ -2,55 +2,51 @@ import asyncio
 import aiohttp
 import websockets
 import json
-import base64
+import logging
+from httputil import *
 
+# TODO Read from env variable
 local_svc = "http://localhost:9002"
 
-bin_types = ["image/jpeg", "image/x-icon"]
-def is_text(headers):
-  if headers.get("content-type") in bin_types:
-    return False
-  else:
-    return True
+logging.basicConfig(level=logging.INFO)
 
-def get_headers_json(headers):
-  # TODO Implement function correctly
-  return {
-    "content-type": headers["content-type"],
-    "content-length": headers["content-length"]
-  }
-
-async def hello():
+async def tunnelling_client_loop():
   async with websockets.connect("ws://localhost:9001") as websocket:
+
+    session = aiohttp.ClientSession()
+
     while True:
       try:
         req_msg = await websocket.recv()
-        print("> {}".format(req_msg))
+        logging.debug("> {}".format(req_msg))
 
         # Make the call using aiohttp
         # https://docs.aiohttp.org/en/stable/client_quickstart.html
         req_msg_json = json.loads(req_msg)
         if req_msg_json["method"] == "GET":
-          async with aiohttp.ClientSession() as session:
-            async with session.get(local_svc + req_msg_json["uri"]) as resp:
-              print("Response status from svc: " + str(resp.status))
-              print("Response headers: " + str(resp.headers))
-              is_text_resp = is_text(resp.headers)
-              if is_text_resp:
-                resp_body = await resp.text()
-              else:
-                resp_body_bytes = await resp.read()
-                resp_body = base64.b64encode(resp_body_bytes).decode('utf-8')
+          async with session.get(local_svc + req_msg_json["uri"]) as resp:
+            resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
+        elif req_msg_json["method"] == "POST":
+          # TODO Convert message body to right format before making the call
+          async with session.post(local_svc + req_msg_json["uri"], data = req_msg["body"]) as resp:
+            resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
+        is_text_resp = is_text(resp.headers)
 
-        # TODO Construct new resp object here
-        return_msg = req_msg_json
+        # Construct new resp object here
+        return_msg = {
+          "id": req_msg_json["id"],
+          "status": resp_status,
+          "is_text": is_text_resp,
+          "headers": resp_headers,
+          "body": resp_body
+        }
 
-        return_msg["headers"] = get_headers_json(resp.headers)
-        return_msg["body"] = resp_body
         await websocket.send(json.dumps(return_msg))
-        
+
       except websockets.ConnectionClosed:
         print(f"Terminated")
         break
 
-asyncio.get_event_loop().run_until_complete(hello())
+    await session.close()
+
+asyncio.get_event_loop().run_until_complete(tunnelling_client_loop())

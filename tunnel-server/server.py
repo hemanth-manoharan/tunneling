@@ -14,15 +14,8 @@ import base64
 
 from threading import Thread
 
+# Global initialization
 logging.basicConfig(level=logging.INFO)
-
-bin_types = ["image/jpeg"]
-def is_text(headers):
-  if headers.get("content-type") in bin_types:
-    return False
-  else:
-    return True
-
 event_dict = {}
 resp_dict = {}
 
@@ -45,87 +38,84 @@ class Event_ts(asyncio.Event):
 #   "body": "<body encoded as base64 string>"
 # }
 class HttpReqHandler(BaseHTTPRequestHandler):
-  def _set_text_response(self):
-    self.send_response(200)
-    self.send_header('Content-type', 'text/html')
-    self.end_headers()
 
-  def _set_bin_response(self, headers):
-    self.send_response(200)
-    self.send_header('content-type', headers["content-type"])
-    self.send_header('content-length', headers["content-length"])
+  def _set_resp_details(self, response):
+    self.send_response(int(response["status"]))
+    for key in response["headers"].keys():
+      self.send_header(key, response["headers"][key])
     self.end_headers()
+    if response["is_text"]:
+      self.wfile.write(response["body"].encode('utf-8'))
+    else:
+      self.wfile.write(base64.b64decode(response["body"]))
 
-  def gen_unique_id(self):
+  def _get_req_msg(self, body = None):
+    msg_id = self._gen_unique_id()
+    # TODO send headers as well
+    msg = {
+      "id": msg_id,
+      "uri": self.path,
+      "method": self.command
+    }
+    http_methods_with_body = ["POST", "PUT"]
+    if (self.command in http_methods_with_body) and (body != None):
+      msg["body"] = body
+    return msg
+
+  def _gen_unique_id(self):
     return time.time()
 
-  async def handle_get(self, path, headers):
+  async def handle_request(self, body = None):
     global event_dict
     global resp_dict
 
     if connected_ws != None:
+      msg = self._get_req_msg(body)
       event = Event_ts()
-       
-      msg_id = self.gen_unique_id()
-      # TODO send headers as well
-      msg = {
-        "id": msg_id,
-        "uri": path,
-        "method": "GET"
-      }
-      event_dict[msg_id] = event
- 
+      event_dict[msg["id"]] = event
+      
       await connected_ws.send(json.dumps(msg))
       logging.debug("> {}".format(json.dumps(msg)))
 
       # Wait on this event to be triggered
       # TODO Put in timeouts for resilience
-      logging.info("Starting to wait on event with id: {}".format(msg_id))
+      logging.info("Waiting on event for req id: {}".format(msg["id"]))
       await event.wait()
-      logging.info("Finished waiting on event with id: {}".format(msg_id))
+      logging.info("Event received for req id: {}".format(msg["id"]))
 
       # Retrieve response and return
-      response = resp_dict[msg_id]
-      del resp_dict[msg_id]
+      response = resp_dict[msg["id"]]
+      del resp_dict[msg["id"]]
       return response
 
     return None
-
-  def do_GET(self):
-    logging.debug("GET request,\nPath: %s\nHeaders:\n%s\n", str(self.path), str(self.headers))
-
+  
+  def do_BASE(self, body = None):
     # Wait for the response
     # Ref: https://geekyhumans.com/create-asynchronous-api-in-python-and-flask/
 
     asyncio.set_event_loop(asyncio.new_event_loop())
     loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(self.handle_get(str(self.path), self.headers))
 
-    logging.debug("Resp Headers from client:" + str(result["headers"]))
+    response = loop.run_until_complete(self.handle_request())
+    logging.debug("Resp Headers from client:" + str(response["headers"]))
 
-    is_text_resp = is_text(result["headers"])
-    if is_text_resp:
-      self._set_text_response()
-      self.wfile.write(result["body"].encode('utf-8'))
-    else:
-      self._set_bin_response(result["headers"])
-      self.wfile.write(base64.b64decode(result["body"]))
+    self._set_resp_details(response)
+
+  def do_GET(self):
+    logging.debug("GET request,\nPath: %s\nHeaders:\n%s\n", str(self.path), str(self.headers))
+    self.do_BASE()
 
   def do_POST(self):
     content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
     post_data = self.rfile.read(content_length) # <--- Gets the data itself
+    
     logging.debug("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
             str(self.path), str(self.headers), post_data.decode('utf-8'))
-
-    # TODO Send the message over the listening websocket here
-    # Synchronously wait for the response (simple design) and
-    # return the response back.
-
-    self._set_response()
-    self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
+    # TODO Use same logic as client.py here to handle binary data as base64
+    self.do_BASE(post_data)
 
 # Start the http server thread
-
 http_server_port = 9000
 httpd = HTTPServer(('', http_server_port), HttpReqHandler)
 
