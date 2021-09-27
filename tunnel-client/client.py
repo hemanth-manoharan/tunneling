@@ -1,17 +1,18 @@
 import asyncio
 import aiohttp
+import configparser
 import websockets
 import json
 import logging
 from httputil import *
 
-# TODO Read from env variable
-local_svc = "http://localhost:9002"
-
-logging.basicConfig(level=logging.INFO)
+config = configparser.ConfigParser()
+config.read('config.ini')
+logging.basicConfig(level=config["tunnelling-server"]["LoggingLevel"])
+local_svc = config["local-service"]["ServiceURL"]
 
 async def tunnelling_client_loop():
-  async with websockets.connect("ws://localhost:9001") as websocket:
+  async with websockets.connect(config["tunnelling-server"]["WebSocketURL"]) as websocket:
 
     session = aiohttp.ClientSession()
 
@@ -44,7 +45,7 @@ async def tunnelling_client_loop():
         await websocket.send(json.dumps(return_msg))
 
       except websockets.ConnectionClosed:
-        print(f"Terminated")
+        logging.info(f"Exception: WebSocket connection closed...")
         break
 
     await session.close()
