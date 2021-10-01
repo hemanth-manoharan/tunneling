@@ -7,6 +7,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import logging
 
 import asyncio
+import configparser
 import websockets
 import time
 import json
@@ -15,7 +16,9 @@ import base64
 from threading import Thread
 
 # Global initialization
-logging.basicConfig(level=logging.INFO)
+config = configparser.ConfigParser()
+config.read('config.ini')
+logging.basicConfig(level=config["general"]["LoggingLevel"])
 event_dict = {}
 resp_dict = {}
 
@@ -160,7 +163,7 @@ async def client_regn_handler(websocket, path):
       break
 
 # Start the external WebSocket server
-wss_port = 9001
+wss_port = config["general"]["Port"]
 
 async def wss_main():
   async with websockets.serve(client_regn_handler, "localhost", wss_port):

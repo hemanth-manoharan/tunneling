@@ -8,7 +8,7 @@ from httputil import *
 
 config = configparser.ConfigParser()
 config.read('config.ini')
-logging.basicConfig(level=config["tunnelling-server"]["LoggingLevel"])
+logging.basicConfig(level=config["general"]["LoggingLevel"])
 local_svc = config["local-service"]["ServiceURL"]
 
 async def tunnelling_client_loop():
