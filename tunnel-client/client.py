@@ -29,7 +29,7 @@ async def tunnelling_client_loop():
             resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
         elif req_msg_json["method"] == "POST":
           # TODO Convert message body to right format before making the call
-          async with session.post(local_svc + req_msg_json["uri"], data = req_msg["body"]) as resp:
+          async with session.post(local_svc + req_msg_json["uri"], data = req_msg_json["body"]) as resp:
             resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
         is_text_resp = is_text(resp.headers)
 
