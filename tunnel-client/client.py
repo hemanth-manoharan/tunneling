@@ -18,6 +18,7 @@ async def tunnelling_client_loop():
 
     while True:
       try:
+        logging.debug("Waiting for next message ...")
         req_msg = await websocket.recv()
         logging.debug("> {}".format(req_msg))
 
@@ -25,13 +26,19 @@ async def tunnelling_client_loop():
         # https://docs.aiohttp.org/en/stable/client_quickstart.html
         req_msg_json = json.loads(req_msg)
         if req_msg_json["method"] == "GET":
-          async with session.get(local_svc + req_msg_json["uri"]) as resp:
+          async with session.get(local_svc + req_msg_json["uri"], headers=req_msg_json["headers"]) as resp:
             resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
         elif req_msg_json["method"] == "POST":
           # TODO Convert message body to right format before making the call
-          async with session.post(local_svc + req_msg_json["uri"], data = req_msg_json["body"]) as resp:
+          async with session.post(local_svc + req_msg_json["uri"],
+            data = req_msg_json["body"], headers = req_msg_json["headers"]) as resp:
             resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
+
         is_text_resp = is_text(resp.headers)
+        if is_text_resp:
+          logging.debug("Sending text response...")
+        else:
+          logging.debug("Sending binary response...")
 
         # Construct new resp object here
         return_msg = {

@@ -30,6 +30,17 @@ class Event_ts(asyncio.Event):
     #FIXME: The _loop attribute is not documented as public api!
     self._loop.call_soon_threadsafe(super().set)
 
+def get_headers_dict(headers):
+  normal_dict = {}
+
+  # TODO Handle for duplicates
+  for key in headers.keys():
+    # Do not relay transfer-encoding header as it is a per hop header
+    if key.lower() == "transfer-encoding":
+      continue
+    normal_dict[key] = headers[key]
+  return normal_dict
+
 # JSON payload structure over the WebSocket
 # Request/Response message format
 # {
@@ -51,14 +62,16 @@ class HttpReqHandler(BaseHTTPRequestHandler):
       self.wfile.write(response["body"].encode('utf-8'))
     else:
       self.wfile.write(base64.b64decode(response["body"]))
+    self.wfile.flush()
+    logging.debug("Finished writing and flushing response...")
 
   def _get_req_msg(self, body = None):
     msg_id = self._gen_unique_id()
-    # TODO send headers as well
     msg = {
       "id": msg_id,
       "uri": self.path,
-      "method": self.command
+      "method": self.command,
+      "headers": get_headers_dict(self.headers)
     }
     http_methods_with_body = ["POST", "PUT"]
     if (self.command in http_methods_with_body) and (body != None):
@@ -68,7 +81,7 @@ class HttpReqHandler(BaseHTTPRequestHandler):
   def _gen_unique_id(self):
     return time.time()
 
-  async def handle_request(self, body = None):
+  async def _handle_request(self, body = None):
     global event_dict
     global resp_dict
 
@@ -93,21 +106,21 @@ class HttpReqHandler(BaseHTTPRequestHandler):
 
     return None
   
-  def do_BASE(self, body = None):
+  def _do_BASE(self, body = None):
     # Wait for the response
     # Ref: https://geekyhumans.com/create-asynchronous-api-in-python-and-flask/
 
     asyncio.set_event_loop(asyncio.new_event_loop())
     loop = asyncio.get_event_loop()
 
-    response = loop.run_until_complete(self.handle_request())
+    response = loop.run_until_complete(self._handle_request(body))
     logging.debug("Resp Headers from client:" + str(response["headers"]))
 
     self._set_resp_details(response)
 
   def do_GET(self):
     logging.debug("GET request,\nPath: %s\nHeaders:\n%s\n", str(self.path), str(self.headers))
-    self.do_BASE()
+    self._do_BASE()
 
   def do_POST(self):
     content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
@@ -116,7 +129,7 @@ class HttpReqHandler(BaseHTTPRequestHandler):
     logging.debug("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
             str(self.path), str(self.headers), post_data.decode('utf-8'))
     # TODO Use same logic as client.py here to handle binary data as base64
-    self.do_BASE(post_data)
+    self._do_BASE(post_data)
 
 # Start the http server thread
 http_server_port = 9000

@@ -1,3 +1,7 @@
 :2015
 
-reverse_proxy 127.0.0.1:9000
+reverse_proxy 127.0.0.1:9000 {
+  transport http {
+    keepalive off
+  }
+}
