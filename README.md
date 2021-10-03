@@ -5,5 +5,7 @@ This project includes a basic version of a tunneling client and server written u
 It uses Caddy as the reverse-proxy in the tunneling host which enables one to expose the web application via https.
 
 Major features to be added
-- API support - POST, PUT, DELETE http calls.
-- Support for secure WebSockets for a secure tunnel across tunneling client and server.
+- Add unit tests.
+- Validate with real RPi test setup.
+- Add API support - POST, PUT, DELETE http calls.
+- Add support for secure WebSockets for a secure tunnel across tunneling client and server.
