@@ -132,7 +132,7 @@ class HttpReqHandler(BaseHTTPRequestHandler):
     self._do_BASE(post_data)
 
 # Start the http server thread
-http_server_port = 9000
+http_server_port = int(config["general"]["HttpServerPort"])
 httpd = HTTPServer(('', http_server_port), HttpReqHandler)
 
 def http_serve_forever(httpd):
@@ -176,9 +176,10 @@ async def client_regn_handler(websocket, path):
       break
 
 # Start the external WebSocket server
-wss_port = config["general"]["Port"]
+wss_port = config["general"]["WebSocketServerPort"]
 
 async def wss_main():
+  # TODO Allow localhost to be configured. For DigitalOcean, replace with Droplet public IP
   async with websockets.serve(client_regn_handler, "localhost", wss_port):
     await asyncio.Future()  # run forever
 
