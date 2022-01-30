@@ -11,6 +11,10 @@ content-type: application/json
 
 ### 
 
+GET {{urlPrefix}}/greetings/1 HTTP/1.1
+
+###
+
 PUT {{urlPrefix}}/greetings/1 HTTP/1.1
 content-type: application/json
 
