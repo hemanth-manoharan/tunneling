@@ -9,3 +9,4 @@ Major features to be added
 - Validate with real RPi test setup.
 - Add API support - POST, PUT, DELETE http calls.
 - Add support for secure WebSockets for a secure tunnel across tunneling client and server.
+- Add multithreading support using ThreadingMixIn. Reference - https://stackoverflow.com/questions/14088294/multithreaded-web-server-in-python#14089457
