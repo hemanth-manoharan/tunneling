@@ -123,14 +123,23 @@ class HttpReqHandler(BaseHTTPRequestHandler):
     self._do_BASE()
 
   def do_POST(self):
-    content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
-    req_body = self.rfile.read(content_length) # <--- Gets the data itself
-    
-    logging.debug("%s request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
-            self.command, str(self.path), str(self.headers), req_body.decode('utf-8'))
-    self._do_BASE(base64.b64encode(req_body).decode('utf-8'))
+    if self.headers['Content-Length'] != None:
+      content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
+      req_body = self.rfile.read(content_length) # <--- Gets the data itself
+      req_body_encoded = base64.b64encode(req_body).decode('utf-8')
+      logging.debug("%s request,\nPath: %s\nHeaders:\n%s\nBody:\n%s\n",
+        self.command, str(self.path), str(self.headers), req_body.decode('utf-8'))
+    else:
+      req_body_encoded = None
+      logging.debug("%s request,\nPath: %s\nHeaders:\n%s\n",
+        self.command, str(self.path), str(self.headers))
+
+    self._do_BASE(req_body_encoded)
 
   def do_PUT(self):
+    self.do_POST()
+
+  def do_DELETE(self):
     self.do_POST()
 
 # Start the http server thread

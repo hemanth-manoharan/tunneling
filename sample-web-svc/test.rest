@@ -2,7 +2,7 @@
 @port = 2015
 @urlPrefix = {{hostname}}:{{port}}
 
-POST {{urlPrefix}}/hello HTTP/1.1
+POST {{urlPrefix}}/greetings HTTP/1.1
 content-type: application/json
 
 {
@@ -11,9 +11,14 @@ content-type: application/json
 
 ### 
 
-PUT {{urlPrefix}}/update HTTP/1.1
+PUT {{urlPrefix}}/greetings/1 HTTP/1.1
 content-type: application/json
 
 {
     "name": "World"
 }
+
+###
+
+DELETE {{urlPrefix}}/greetings/1 HTTP/1.1
+
