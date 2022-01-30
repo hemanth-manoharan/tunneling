@@ -7,6 +7,5 @@ It uses Caddy as the reverse-proxy in the tunneling host which enables one to ex
 Major features to be added
 - Add unit tests.
 - Validate with real RPi test setup.
-- Add API support - POST, PUT, DELETE http calls.
 - Add support for secure WebSockets for a secure tunnel across tunneling client and server.
 - Add multithreading support using ThreadingMixIn. Reference - https://stackoverflow.com/questions/14088294/multithreaded-web-server-in-python#14089457
