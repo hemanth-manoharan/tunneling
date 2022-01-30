@@ -1,0 +1,10 @@
+@hostname = http://127.0.0.1
+@port = 2015
+@urlPrefix = {{hostname}}:{{port}}
+
+POST {{urlPrefix}}/hello HTTP/1.1
+content-type: application/json
+
+{
+    "name": "World"
+}

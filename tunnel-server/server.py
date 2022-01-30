@@ -129,7 +129,8 @@ class HttpReqHandler(BaseHTTPRequestHandler):
     logging.debug("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
             str(self.path), str(self.headers), post_data.decode('utf-8'))
     # TODO Use same logic as client.py here to handle binary data as base64
-    self._do_BASE(post_data)
+    # TODO base64.b64encode(resp_body_bytes).decode('utf-8')
+    self._do_BASE(base64.b64encode(post_data).decode('utf-8'))
 
 # Start the http server thread
 http_server_port = int(config["general"]["HttpServerPort"])
