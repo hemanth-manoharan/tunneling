@@ -124,13 +124,14 @@ class HttpReqHandler(BaseHTTPRequestHandler):
 
   def do_POST(self):
     content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
-    post_data = self.rfile.read(content_length) # <--- Gets the data itself
+    req_body = self.rfile.read(content_length) # <--- Gets the data itself
     
-    logging.debug("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
-            str(self.path), str(self.headers), post_data.decode('utf-8'))
-    # TODO Use same logic as client.py here to handle binary data as base64
-    # TODO base64.b64encode(resp_body_bytes).decode('utf-8')
-    self._do_BASE(base64.b64encode(post_data).decode('utf-8'))
+    logging.debug("%s request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
+            self.command, str(self.path), str(self.headers), req_body.decode('utf-8'))
+    self._do_BASE(base64.b64encode(req_body).decode('utf-8'))
+
+  def do_PUT(self):
+    self.do_POST()
 
 # Start the http server thread
 http_server_port = int(config["general"]["HttpServerPort"])

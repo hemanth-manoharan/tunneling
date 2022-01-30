@@ -30,9 +30,11 @@ async def tunnelling_client_loop():
           async with session.get(local_svc + req_msg_json["uri"], headers=req_msg_json["headers"]) as resp:
             resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
         elif req_msg_json["method"] == "POST":
-          # TODO Convert message body to right format before making the call
-          # TODO call base64.b64decode(req_msg_json["body"]) if request body is b64 encoded
           async with session.post(local_svc + req_msg_json["uri"],
+            data = base64.b64decode(req_msg_json["body"]), headers = req_msg_json["headers"]) as resp:
+            resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
+        elif req_msg_json["method"] == "PUT":
+          async with session.put(local_svc + req_msg_json["uri"],
             data = base64.b64decode(req_msg_json["body"]), headers = req_msg_json["headers"]) as resp:
             resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
 
