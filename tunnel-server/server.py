@@ -15,12 +15,16 @@ import base64
 
 from threading import Thread
 
+from aiohttp import web
+
 # Global initialization
 config = configparser.ConfigParser()
 config.read('config.ini')
 logging.basicConfig(level=config["general"]["LoggingLevel"])
+
 event_dict = {}
 resp_dict = {}
+connected_ws = None
 
 # Thread-safe version of asyncio.Event
 # Ref: https://stackoverflow.com/questions/33000200/asyncio-wait-for-event-from-other-thread
@@ -41,6 +45,9 @@ def get_headers_dict(headers):
     normal_dict[key] = headers[key]
   return normal_dict
 
+def _gen_unique_id():
+  return time.time()
+
 # JSON payload structure over the WebSocket
 # Request/Response message format
 # {
@@ -51,113 +58,75 @@ def get_headers_dict(headers):
 #   },
 #   "body": "<body encoded as base64 string>"
 # }
-class HttpReqHandler(BaseHTTPRequestHandler):
+async def _get_req_msg(request):
+  msg_id = _gen_unique_id()
+  msg = {
+    "id": msg_id,
+    "uri": request.path,
+    "method": request.method,
+    "headers": get_headers_dict(request.headers)
+  }
 
-  def _set_resp_details(self, response):
-    self.send_response(int(response["status"]))
-    for key in response["headers"].keys():
-      self.send_header(key, response["headers"][key])
-    self.end_headers()
-    if response["is_text"]:
-      self.wfile.write(response["body"].encode('utf-8'))
-    else:
-      self.wfile.write(base64.b64decode(response["body"]))
-    self.wfile.flush()
-    logging.debug("Finished writing and flushing response...")
+  if request.can_read_body:
+    body = await request.read()
+    body_encoded = base64.b64encode(body).decode('utf-8')
+    msg["body"] = body_encoded
 
-  def _get_req_msg(self, body = None):
-    msg_id = self._gen_unique_id()
-    msg = {
-      "id": msg_id,
-      "uri": self.path,
-      "method": self.command,
-      "headers": get_headers_dict(self.headers)
-    }
-    http_methods_with_body = ["POST", "PUT"]
-    if (self.command in http_methods_with_body) and (body != None):
-      msg["body"] = body
-    return msg
+  return msg
 
-  def _gen_unique_id(self):
-    return time.time()
+async def handle_request(request):
+  global event_dict
+  global resp_dict
+  global connected_ws
 
-  async def _handle_request(self, body = None):
-    global event_dict
-    global resp_dict
+  if connected_ws != None:
+    msg = await _get_req_msg(request)
+    event = Event_ts()
+    event_dict[msg["id"]] = event
+    
+    await connected_ws.send(json.dumps(msg))
+    logging.debug("> {}".format(json.dumps(msg)))
 
-    if connected_ws != None:
-      msg = self._get_req_msg(body)
-      event = Event_ts()
-      event_dict[msg["id"]] = event
-      
-      await connected_ws.send(json.dumps(msg))
-      logging.debug("> {}".format(json.dumps(msg)))
+    # Wait on this event to be triggered
+    # TODO Put in timeouts for resilience
+    logging.info("Waiting on event for req id: {}".format(msg["id"]))
+    await event.wait()
+    logging.info("Event received for req id: {}".format(msg["id"]))
 
-      # Wait on this event to be triggered
-      # TODO Put in timeouts for resilience
-      logging.info("Waiting on event for req id: {}".format(msg["id"]))
-      await event.wait()
-      logging.info("Event received for req id: {}".format(msg["id"]))
+    # Retrieve response and return
+    ws_response = resp_dict[msg["id"]]
+    del resp_dict[msg["id"]]
+    return ws_response
 
-      # Retrieve response and return
-      response = resp_dict[msg["id"]]
-      del resp_dict[msg["id"]]
-      return response
+  return None
 
-    return None
-  
-  def _do_BASE(self, body = None):
-    # Wait for the response
-    # Ref: https://geekyhumans.com/create-asynchronous-api-in-python-and-flask/
+def get_http_response(ws_response):
+  if ws_response["is_text"]:
+    return web.Response(
+      text=ws_response["body"],
+      headers=ws_response["headers"],
+      status=int(ws_response["status"])
+    )
+  else:
+    return web.Response(
+      body=base64.b64decode(ws_response["body"]),
+      headers=ws_response["headers"],
+      status=int(ws_response["status"])
+    )  
 
-    asyncio.set_event_loop(asyncio.new_event_loop())
-    loop = asyncio.get_event_loop()
+# asyncio http server handler
+async def all_handler(request):
+  ws_response = await handle_request(request)
+  return get_http_response(ws_response)
 
-    response = loop.run_until_complete(self._handle_request(body))
-    logging.debug("Resp Headers from client:" + str(response["headers"]))
-
-    self._set_resp_details(response)
-
-  def do_GET(self):
-    logging.debug("GET request,\nPath: %s\nHeaders:\n%s\n", str(self.path), str(self.headers))
-    self._do_BASE()
-
-  def do_POST(self):
-    if self.headers['Content-Length'] != None:
-      content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
-      req_body = self.rfile.read(content_length) # <--- Gets the data itself
-      req_body_encoded = base64.b64encode(req_body).decode('utf-8')
-      logging.debug("%s request,\nPath: %s\nHeaders:\n%s\nBody:\n%s\n",
-        self.command, str(self.path), str(self.headers), req_body.decode('utf-8'))
-    else:
-      req_body_encoded = None
-      logging.debug("%s request,\nPath: %s\nHeaders:\n%s\n",
-        self.command, str(self.path), str(self.headers))
-
-    self._do_BASE(req_body_encoded)
-
-  def do_PUT(self):
-    self.do_POST()
-
-  def do_DELETE(self):
-    self.do_POST()
-
-# Start the http server thread
-http_server_port = int(config["general"]["HttpServerPort"])
-httpd = HTTPServer(('', http_server_port), HttpReqHandler)
-
-def http_serve_forever(httpd):
-  with httpd:  # to make sure httpd.server_close is called
-    logging.info('Starting http server...\n')
-    httpd.serve_forever()
-
-thread = Thread(target=http_serve_forever, args=(httpd, ))
-thread.start()
+app = web.Application()
+app.add_routes([
+  web.route('*', '/{uri:.*}', all_handler),
+  ])
 
 # Reference: https://websockets.readthedocs.io/en/stable/intro/index.html
-connected_ws = None
 
-async def client_regn_handler(websocket, path):
+async def socket_server_handler(websocket, path):
   global connected_ws
   global event_dict
   global resp_dict
@@ -191,8 +160,16 @@ wss_port = config["general"]["WebSocketServerPort"]
 
 async def wss_main():
   # TODO Allow localhost to be configured. For DigitalOcean, replace with Droplet public IP
-  async with websockets.serve(client_regn_handler, "localhost", wss_port):
+  async with websockets.serve(socket_server_handler, "localhost", wss_port):
     await asyncio.Future()  # run forever
 
-logging.info('Starting wss server...\n')
-asyncio.run(wss_main())
+def serve_forever():
+  logging.info('Starting wss server...\n')
+  asyncio.run(wss_main())
+
+thread = Thread(target=serve_forever)
+thread.start()
+
+logging.info('Starting http server...\n')
+http_server_port = int(config["general"]["HttpServerPort"])
+web.run_app(app, port = http_server_port)

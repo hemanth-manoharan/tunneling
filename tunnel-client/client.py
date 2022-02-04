@@ -41,6 +41,7 @@ async def tunnelling_client_loop():
             resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
         
         elif req_msg_json["method"] == "DELETE":
+          # TODO Still to debug - DELETE with body scenario
           req_data = None
           if hasattr(req_msg_json, "body"):
             req_data = base64.b64decode(req_msg_json["body"])
@@ -48,7 +49,6 @@ async def tunnelling_client_loop():
           async with session.delete(local_svc + req_msg_json["uri"],
             data = req_data, headers = req_msg_json["headers"]) as resp:
             resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
-
 
         is_text_resp = is_text(resp.headers)
         if is_text_resp:
