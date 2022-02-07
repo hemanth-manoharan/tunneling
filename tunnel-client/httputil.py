@@ -27,22 +27,16 @@ def _get_headers_dict(headers):
   return normal_dict
 
 async def get_resp_body_str(httpResponse, logging):
-  is_text_resp = is_text(httpResponse.headers)
+  # is_text_resp = is_text(httpResponse.headers)
 
   if _is_chunked(httpResponse.headers):
     buffer = b""
     async for data, _ in httpResponse.content.iter_chunks():
       buffer += data
-    if is_text_resp:
-      resp_body = buffer.decode("utf-8")
-    else:
       resp_body = base64.b64encode(buffer).decode('utf-8')
   else:
-    if is_text_resp:
-      resp_body = await httpResponse.text()
-    else:
-      resp_body_bytes = await httpResponse.read()
-      resp_body = base64.b64encode(resp_body_bytes).decode('utf-8')
+    resp_body_bytes = await httpResponse.read()
+    resp_body = base64.b64encode(resp_body_bytes).decode('utf-8')
   return resp_body
 
 async def extract_response_details(httpResponse, logging):

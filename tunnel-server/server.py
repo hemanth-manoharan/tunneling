@@ -94,24 +94,14 @@ async def handle_request(request):
 
   return None
 
-def get_http_response(ws_response):
-  if ws_response["is_text"]:
-    return web.Response(
-      text=ws_response["body"],
-      headers=ws_response["headers"],
-      status=int(ws_response["status"])
-    )
-  else:
-    return web.Response(
-      body=base64.b64decode(ws_response["body"]),
-      headers=ws_response["headers"],
-      status=int(ws_response["status"])
-    )  
-
 # asyncio http server handler
 async def all_handler(request):
   ws_response = await handle_request(request)
-  return get_http_response(ws_response)
+  return web.Response(
+    body=base64.b64decode(ws_response["body"]),
+    headers=ws_response["headers"],
+    status=int(ws_response["status"])
+  )
 
 app = web.Application()
 app.add_routes([

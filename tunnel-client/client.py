@@ -42,12 +42,10 @@ async def tunnelling_client_loop():
           logging.error("Unsupported request method. Ignoring ...")
           continue
         
-        is_text_resp = httputil.is_text(resp.headers)
         # Construct new resp object here
         return_msg = {
           "id": req_msg_json["id"],
           "status": resp_status,
-          "is_text": is_text_resp,
           "headers": resp_headers,
           "body": resp_body
         }
