@@ -5,7 +5,7 @@ import websockets
 import json
 import logging
 import base64
-from httputil import *
+import httputil
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -26,36 +26,23 @@ async def tunnelling_client_loop():
         # Make the call using aiohttp
         # https://docs.aiohttp.org/en/stable/client_quickstart.html
         req_msg_json = json.loads(req_msg)
-        if req_msg_json["method"] == "GET":
-          async with session.get(local_svc + req_msg_json["uri"], headers=req_msg_json["headers"]) as resp:
-            resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
-        
-        elif req_msg_json["method"] == "POST":
-          async with session.post(local_svc + req_msg_json["uri"],
+        req_method = req_msg_json["method"]
+        if req_method == "GET" or req_method == "DELETE":
+          # TODO DELETE with body scenario not supported yet
+          async with session.request(req_method, 
+            local_svc + req_msg_json["uri"], headers=req_msg_json["headers"]) as resp:
+            resp_status, resp_headers, resp_body = await httputil.extract_response_details(resp, logging)
+        elif req_method == "POST" or req_method == "PUT":
+          async with session.request(req_method,
+            local_svc + req_msg_json["uri"],
             data = base64.b64decode(req_msg_json["body"]), headers = req_msg_json["headers"]) as resp:
-            resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
-        
-        elif req_msg_json["method"] == "PUT":
-          async with session.put(local_svc + req_msg_json["uri"],
-            data = base64.b64decode(req_msg_json["body"]), headers = req_msg_json["headers"]) as resp:
-            resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
-        
-        elif req_msg_json["method"] == "DELETE":
-          # TODO Still to debug - DELETE with body scenario
-          req_data = None
-          if hasattr(req_msg_json, "body"):
-            req_data = base64.b64decode(req_msg_json["body"])
-          
-          async with session.delete(local_svc + req_msg_json["uri"],
-            data = req_data, headers = req_msg_json["headers"]) as resp:
-            resp_status, resp_headers, resp_body = await extract_response_details(resp, logging)
-
-        is_text_resp = is_text(resp.headers)
-        if is_text_resp:
-          logging.debug("Sending text response...")
+            resp_status, resp_headers, resp_body = await httputil.extract_response_details(resp, logging)
         else:
-          logging.debug("Sending binary response...")
-
+          # TODO Handle this case better
+          logging.error("Unsupported request method. Ignoring ...")
+          continue
+        
+        is_text_resp = httputil.is_text(resp.headers)
         # Construct new resp object here
         return_msg = {
           "id": req_msg_json["id"],

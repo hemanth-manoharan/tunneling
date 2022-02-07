@@ -8,10 +8,10 @@ def is_text(headers):
   else:
     return True
 
-def is_chunked(headers):
+def _is_chunked(headers):
   return headers.get("transfer-encoding") == "chunked"
 
-def get_headers_dict(headers):
+def _get_headers_dict(headers):
   normal_dict = {}
 
   # TODO Handle for duplicates
@@ -29,7 +29,7 @@ def get_headers_dict(headers):
 async def get_resp_body_str(httpResponse, logging):
   is_text_resp = is_text(httpResponse.headers)
 
-  if is_chunked(httpResponse.headers):
+  if _is_chunked(httpResponse.headers):
     buffer = b""
     async for data, _ in httpResponse.content.iter_chunks():
       buffer += data
@@ -49,6 +49,6 @@ async def extract_response_details(httpResponse, logging):
   logging.info("Response status: " + str(httpResponse.status))
   logging.debug("Response headers: " + str(httpResponse.headers))
   resp_status = str(httpResponse.status)
-  resp_headers = get_headers_dict(httpResponse.headers)
+  resp_headers = _get_headers_dict(httpResponse.headers)
   resp_body = await get_resp_body_str(httpResponse, logging)
   return resp_status, resp_headers, resp_body
