@@ -1,13 +1,5 @@
 import base64
 
-bin_types = ["image/jpeg", "image/x-icon", "image/png"]
-
-def is_text(headers):
-  if headers.get("content-type") in bin_types:
-    return False
-  else:
-    return True
-
 def _is_chunked(headers):
   return headers.get("transfer-encoding") == "chunked"
 
@@ -27,8 +19,6 @@ def _get_headers_dict(headers):
   return normal_dict
 
 async def get_resp_body_str(httpResponse, logging):
-  # is_text_resp = is_text(httpResponse.headers)
-
   if _is_chunked(httpResponse.headers):
     buffer = b""
     async for data, _ in httpResponse.content.iter_chunks():
