@@ -13,10 +13,3 @@ project_root/<br/>
 |-- tunnel-client/  # Code-base for the tunneling client (to be hosted on the other end, close to the final service being exposed)<br/>
 |-- sample-app/  # Sample web site to test the tunneling setup<br/>
 |-- sample-web-svc/  # Sample web service to test the tunneling setup<br/>
-
-## Major todos
-
-- Add error handling.
-- Add unit tests (wherever appropriate).
-- Validate with real RPi test setup.
-- Add support for secure WebSockets for a secure tunnel across tunneling client and server.
