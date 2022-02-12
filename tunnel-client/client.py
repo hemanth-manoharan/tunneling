@@ -1,3 +1,13 @@
+"""
+Tunneling Client
+
+This script listens for messages over a Web Socket from the
+tunneling server and forwards them over as http requests to
+the end service that it is proxying for. It also relays the
+response from the end service back as a message on the Web
+Socket as well.
+"""
+
 import asyncio
 import configparser
 import json

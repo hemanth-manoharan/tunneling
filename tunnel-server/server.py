@@ -1,3 +1,13 @@
+"""
+Tunneling Server
+
+This script proxies http requests from the upstream
+Caddy reverse proxy down as messages via a Web Socket
+to the tunneling client. It also proxies the response
+messages from the Web Socket (from the tunneling client)
+back to the Caddy reverse proxy.
+"""
+
 import logging
 import asyncio
 import configparser
@@ -95,7 +105,7 @@ async def handle_request(request: aiohttp.web.Request):
     global resp_dict
     global connected_ws
 
-    if connected_ws != None:
+    if connected_ws is not None:
         msg = await _get_req_msg(request)
         event = EventTs()
         event_dict[msg["id"]] = event
