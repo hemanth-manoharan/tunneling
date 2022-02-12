@@ -16,7 +16,6 @@ project_root/<br/>
 
 ## Major todos
 
-- Add internal documentation.
 - Add error handling.
 - Add unit tests (wherever appropriate).
 - Validate with real RPi test setup.
