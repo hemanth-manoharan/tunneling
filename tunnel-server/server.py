@@ -183,6 +183,7 @@ async def socket_server_handler(websocket, path):
 
 
 # Start the external WebSocket server
+wss_host = config["general"]["WebSocketServerHost"]
 wss_port = config["general"]["WebSocketServerPort"]
 
 
@@ -192,7 +193,7 @@ async def wss_main():
     """
 
     # TODO Allow localhost to be configured. For DigitalOcean, replace with Droplet public IP
-    async with websockets.serve(socket_server_handler, "localhost", wss_port):
+    async with websockets.serve(socket_server_handler, wss_host, wss_port):
         await asyncio.Future()  # run forever
 
 
