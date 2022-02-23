@@ -1,0 +1,11 @@
+[Unit]
+Description=Start tunnel server on boot
+After=multi-user.target
+
+[Service]
+WorkingDirectory=/tmp/tunnel-server
+ExecStart=/usr/bin/python /tmp/tunnel-server/server.py
+User=your-user
+
+[Install]
+WantedBy=multi-user.target

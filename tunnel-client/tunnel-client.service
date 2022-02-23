@@ -1,0 +1,11 @@
+[Unit]
+Description=Start tunnel client on boot
+After=multi-user.target
+
+[Service]
+WorkingDirectory=/tmp/tunneling/tunnel-client
+ExecStart=/usr/bin/python /tmp/tunneling/tunnel-client/client.py
+User=your-user
+
+[Install]
+WantedBy=multi-user.target
