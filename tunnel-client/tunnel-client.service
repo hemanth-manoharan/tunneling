@@ -6,6 +6,8 @@ After=multi-user.target
 WorkingDirectory=/tmp/tunneling/tunnel-client
 ExecStart=/usr/bin/python /tmp/tunneling/tunnel-client/client.py
 User=your-user
+Restart=on-failure
+RestartSec=300s
 
 [Install]
 WantedBy=multi-user.target
